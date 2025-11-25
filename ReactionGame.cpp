@@ -174,5 +174,5 @@ void ReactionGame::run() {
 }
 
 bool ReactionGame::isGameComplete() {
-    return gameComplete;
+    return false; // Always return false since we use manual exit
 }

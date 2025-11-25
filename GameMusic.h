@@ -104,11 +104,20 @@ private:
     // Pacman intro melody
     static const int pacmanMelody[];
     static const int pacmanMelodySize;
+    
+    // Non-blocking playback state
+    bool isPlaying;
+    int currentNote;
+    unsigned long noteStartTime;
+    int currentNoteDuration;
+    bool inPause;
 
 public:
     GameMusic(int pin);
-    void playPacmanIntro();
+    void startPacmanIntro();
+    void update(); // Call this regularly to continue playback
     void stopMusic();
+    bool isPlayingMusic();
 };
 
 #endif // GAMEMUSIC_H

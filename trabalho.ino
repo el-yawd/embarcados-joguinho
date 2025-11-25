@@ -1,6 +1,7 @@
 #include <LiquidCrystal.h>
 #include "DinoGame.h"
 #include "ReactionGame.h" // New game include
+#include "GameMusic.h" // Music system include
 
 // --- Hardware Setup ---
 const int rs = 12, en = 11, d4 = 5, d5 = 4, d6 = 3, d7 = 2;
@@ -10,6 +11,7 @@ LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 const int potPin = A5;         // Analog pin for potentiometer (Menu Navigation)
 const int selectButtonPin = 7; // Digital pin for selection (Menu) and JUMP (Dino)
 const int exitButtonPin = 8;   // Digital pin for universal Exit to Menu
+const int buzzerPin = 9;       // Digital pin for buzzer/speaker
 
 // Dedicated Game Controls (New)
 const int player1Pin = 6;      // Digital pin for Reaction Game Player 1
@@ -19,8 +21,10 @@ const int player2Pin = 7;      // Digital pin for Reaction Game Player 2
 // Instantiate game objects
 // DinoGame uses Pin 7 for Jump
 DinoGame dinoGame(lcd, selectButtonPin);
-// ReactionGame uses Pins 8 and 9 for P1 and P2
+// ReactionGame uses Pins 6 and 7 for P1 and P2
 ReactionGame reactionGame(lcd, player1Pin, player2Pin);
+// Music system uses Pin 9 for buzzer
+GameMusic gameMusic(buzzerPin);
 
 // --- Application State Management ---
 enum AppState {
@@ -108,10 +112,12 @@ void handleSelection() {
         switch (currentSelection) {
             case 0: // "Play Dino Game"
                 currentState = RUNNING_DINO;
+                gameMusic.startPacmanIntro(); // Start background music
                 dinoGame.setup(); // Initialize game assets and state
                 break;
             case 1: // "Play Reaction Game"
                 currentState = RUNNING_REACTION;
+                gameMusic.startPacmanIntro(); // Start background music
                 reactionGame.setup();
                 break;
             case 2: // "About/Info"
@@ -127,7 +133,7 @@ void drawAboutScreen() {
     lcd.setCursor(0, 0);
     lcd.print(" LCD Arcade V1 ");
     lcd.setCursor(0, 1);
-    lcd.print(" P1:6 P2:7 EXIT:8 ");
+    lcd.print("P1:6 P2:7 E:8 B:9");
 
     // Use the select button (7) to return to menu
     if (digitalRead(selectButtonPin) == HIGH && (millis() - lastDebounceTime > debounceDelay)) {
@@ -147,6 +153,9 @@ void setup() {
     // Reaction Game Pins (need to be initialized here or in ReactionGame setup)
     pinMode(player1Pin, INPUT);
     pinMode(player2Pin, INPUT);
+
+    // Buzzer pin (initialized in GameMusic constructor, but good to be explicit)
+    pinMode(buzzerPin, OUTPUT);
 
     // Initial read for the pot value
     lastPotValue = analogRead(potPin);
@@ -170,7 +179,7 @@ void loop() {
 
         case RUNNING_DINO:
         case RUNNING_REACTION:
-            // --- Universal Exit Logic (Pin 6 Check) ---
+            // --- Universal Exit Logic (Pin 8 Check) ---
             if (digitalRead(exitButtonPin) == HIGH && (millis() - lastDebounceTime > debounceDelay)) {
                 lastDebounceTime = millis();
                 currentState = MENU; // Exit to menu
