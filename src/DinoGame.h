@@ -16,7 +16,7 @@ private:
     LiquidCrystal& lcd;
 
     // Pins
-    const int buttonPin; // Dedicated jump button (now Pin 7, the menu select button)
+    const int buttonPin; // Dedicated jump button (now Pin 6, the menu select button)
 
     // State & Timing
     GameStatus currentStatus = PLAYING;
