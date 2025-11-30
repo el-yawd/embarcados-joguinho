@@ -1,42 +1,45 @@
 #include "BlockBreaker.h"
 
+// --- Constructor ---
 BlockBreaker::BlockBreaker(LiquidCrystal& lcdRef, int pPin, int bPin) 
     : lcd(lcdRef), potPin(pPin), buttonPin(bPin) {
 }
 
-// NOVO: Chamado apenas UMA VEZ no setup() principal
+// --- Initialization & Control ---
+
 void BlockBreaker::begin() {
-    matrix.begin(); // Inicializa hardware da matriz apenas uma vez
+    matrix.begin(); // Hardware init
     pinMode(buttonPin, INPUT);
 }
 
-// RENOMEADO: Chamado toda vez que entra no jogo pelo menu
 void BlockBreaker::start() {
-    // Mensagem de Introdução no LCD
+    // Intro UI
     lcd.clear();
     lcd.setCursor(0, 0);
-    lcd.print(" LED MATRIX GAME");
+    lcd.print("BRICK");
     lcd.setCursor(0, 1);
-    lcd.print(" Block Breaker ");
-    delay(1500);
+    lcd.print("BREAKER");
+    delay(3000);
     
     resetGame();
 }
 
 void BlockBreaker::stop() {
-    // Zera todo o buffer (desliga todos os pixels)
+    // Clear Buffer
     for(int y=0; y<8; y++) {
         for(int x=0; x<12; x++) {
             frame[y][x] = 0;
         }
     }
-    // Envia o buffer vazio para a matriz física imediatamente
+    // Update Matrix
     matrix.renderBitmap(frame, 8, 12);
 }
 
+// --- Game Setup Helpers ---
+
 void BlockBreaker::initBricks() {
     totalBricks = 0;
-    // Cria 3 linhas de tijolos preenchidos
+    // Create 3 rows of bricks
     for (int y = 0; y < 3; y++) {
         for (int x = 0; x < 12; x++) {
             bricks[y][x] = true;
@@ -49,14 +52,15 @@ void BlockBreaker::resetGame() {
     state = BB_WAITING;
     initBricks();
     
-    // Posição inicial da bola (centro inferior)
+    // Initial Ball Position
     ballX = 6;
     ballY = 6; 
-    ballDirX = 0.5; // Ligeira inclinação lateral
-    ballDirY = -1;  // Movimento para cima
+    ballDirX = 0.5; 
+    ballDirY = -1;  
     
     lastBallUpdate = millis();
     
+    // Reset UI
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print("Score: 0");
@@ -64,13 +68,14 @@ void BlockBreaker::resetGame() {
     lcd.print("Press Jump/Start");
 }
 
+// --- Physics Logic ---
+
 void BlockBreaker::updatePaddle() {
     int potValue = analogRead(potPin);
-    // Mapeia o potenciômetro para a largura da matriz (12) menos a largura da raquete
-    // Garante que a raquete não saia da tela
+    // Map Pot to Matrix Width
     paddleX = map(potValue, 0, 1023, 12 - paddleWidth, 0);
     
-    // Proteção extra de limites
+    // Bounds Check
     if (paddleX < 0) paddleX = 0;
     if (paddleX > (12 - paddleWidth)) paddleX = 12 - paddleWidth;
 }
@@ -79,23 +84,23 @@ void BlockBreaker::updateBall() {
     if (millis() - lastBallUpdate > ballSpeedDelay) {
         lastBallUpdate = millis();
         
-        // Calcula próxima posição
+        // Calculate Next Pos
         float nextX = ballX + ballDirX;
         float nextY = ballY + ballDirY;
         
-        // 1. Colisão com Paredes Laterais (0 e 11)
+        // 1. Wall Collision (Left/Right)
         if (nextX < 0 || nextX >= 12) {
-            ballDirX *= -1; // Inverte direção X
-            nextX = ballX + ballDirX; // Recalcula nextX
+            ballDirX *= -1; 
+            nextX = ballX + ballDirX; 
         }
         
-        // 2. Colisão com Teto (0)
+        // 2. Ceiling Collision
         if (nextY < 0) {
-            ballDirY *= -1; // Inverte direção Y
+            ballDirY *= -1; 
             nextY = ballY + ballDirY;
         }
         
-        // 3. Colisão com Chão (Game Over)
+        // 3. Floor Collision (Game Over)
         if (nextY >= 8) {
             state = BB_GAME_OVER;
             lcd.clear();
@@ -106,33 +111,31 @@ void BlockBreaker::updateBall() {
             return;
         }
         
-        // 4. Colisão com Raquete (Linha 7)
-        // Se a bola está descendo (ballDirY > 0) e vai cruzar a linha 7
+        // 4. Paddle Collision
         if (ballDirY > 0 && nextY >= 7 && ballY < 8) {
             int ballIntX = (int)nextX;
-            // Verifica se a bola está dentro da área horizontal da raquete
             if (ballIntX >= paddleX && ballIntX < paddleX + paddleWidth) {
-                ballDirY *= -1; // Rebate para cima
+                ballDirY *= -1; // Bounce Up
                 
-                // Física Simples: Bater nas pontas muda o ângulo X
-                if (ballIntX == paddleX) ballDirX = -0.7; // Ponta esquerda
-                else if (ballIntX == paddleX + paddleWidth - 1) ballDirX = 0.7; // Ponta direita
+                // Paddle Angle Physics
+                if (ballIntX == paddleX) ballDirX = -0.7; 
+                else if (ballIntX == paddleX + paddleWidth - 1) ballDirX = 0.7; 
                 
-                nextY = ballY + ballDirY; // Aplica o movimento
+                nextY = ballY + ballDirY; 
             }
         }
         
-        // 5. Colisão com Tijolos (Linhas 0, 1, 2)
+        // 5. Brick Collision
         int brickX = (int)nextX;
         int brickY = (int)nextY;
         
         if (brickY >= 0 && brickY < 3 && brickX >= 0 && brickX < 12) {
             if (bricks[brickY][brickX]) {
-                bricks[brickY][brickX] = false; // Destrói tijolo
+                bricks[brickY][brickX] = false; // Destroy
                 totalBricks--;
-                ballDirY *= -1; // Rebate bola
+                ballDirY *= -1; // Bounce
                 
-                // Atualiza Placar
+                // Update Score
                 lcd.setCursor(7, 0);
                 lcd.print(36 - totalBricks);
                 
@@ -145,14 +148,16 @@ void BlockBreaker::updateBall() {
             }
         }
         
-        // Aplica nova posição
+        // Apply Physics
         ballX += ballDirX;
         ballY += ballDirY;
     }
 }
 
+// --- Rendering ---
+
 void BlockBreaker::draw() {
-    // Limpa o buffer
+    // Clear Buffer
     for(int y=0; y<8; y++) {
         for(int x=0; x<12; x++) {
             frame[y][x] = 0;
@@ -160,30 +165,30 @@ void BlockBreaker::draw() {
     }
     
     if (state == BB_VICTORY) {
-        // Desenha "Smiley Face"
-        frame[2][3]=1; frame[2][8]=1; // Olhos
-        frame[5][3]=1; frame[6][4]=1; frame[6][5]=1; frame[6][6]=1; frame[6][7]=1; frame[5][8]=1; // Sorriso
+        // Smiley Face
+        frame[2][3]=1; frame[2][8]=1; 
+        frame[5][3]=1; frame[6][4]=1; frame[6][5]=1; frame[6][6]=1; frame[6][7]=1; frame[5][8]=1; 
     } 
     else if (state == BB_GAME_OVER) {
-        // Desenha um "X" grande
+        // Big X
         frame[1][2]=1; frame[2][3]=1; frame[3][4]=1; frame[4][5]=1; frame[5][6]=1;
         frame[5][2]=1; frame[4][3]=1; frame[3][4]=1; frame[2][5]=1; frame[1][6]=1;
     }
     else {
-        // 1. Desenha Tijolos ativos
+        // 1. Bricks
         for(int y=0; y<3; y++) {
             for(int x=0; x<12; x++) {
                 if (bricks[y][x]) frame[y][x] = 1;
             }
         }
         
-        // 2. Desenha Raquete (sempre na linha 7)
+        // 2. Paddle
         for(int i=0; i<paddleWidth; i++) {
              int px = paddleX + i;
              if(px < 12) frame[7][px] = 1;
         }
         
-        // 3. Desenha Bola
+        // 3. Ball
         int bx = (int)ballX;
         int by = (int)ballY;
         if(bx >= 0 && bx < 12 && by >= 0 && by < 8) {
@@ -191,21 +196,22 @@ void BlockBreaker::draw() {
         }
     }
     
-    // Atualiza a matriz de LEDs física
+    // Push to Hardware
     matrix.renderBitmap(frame, 8, 12);
 }
 
+// --- Main Loop ---
 void BlockBreaker::run() {
-    updatePaddle(); // Leitura contínua do pot
+    updatePaddle(); 
     
     if (state == BB_WAITING) {
         draw();
-        // Inicia o jogo ao pressionar o botão
+        // Start Trigger
         if (digitalRead(buttonPin) == HIGH) {
             state = BB_PLAYING;
             lcd.setCursor(0, 1);
             lcd.print("Running...      ");
-            delay(200); // Debounce simples
+            delay(200); 
         }
     }
     else if (state == BB_PLAYING) {
@@ -213,9 +219,9 @@ void BlockBreaker::run() {
         draw();
     }
     else {
-        // Estado GAME OVER ou VICTORY
+        // End State (Win/Loss)
         draw();
-        // Reinicia ao pressionar botão
+        // Restart Trigger
         if (digitalRead(buttonPin) == HIGH) {
             resetGame();
             delay(500); 

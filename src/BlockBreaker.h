@@ -3,9 +3,9 @@
 
 #include <Arduino.h>
 #include <LiquidCrystal.h>
-#include "Arduino_LED_Matrix.h" // Biblioteca nativa do UNO R4 WiFi
+#include "Arduino_LED_Matrix.h" 
 
-// Estados internos do Block Breaker
+// --- Game States ---
 enum BBState {
     BB_WAITING,
     BB_PLAYING,
@@ -13,50 +13,53 @@ enum BBState {
     BB_VICTORY
 };
 
+// --- Class Definition ---
 class BlockBreaker {
 public:
-    // Construtor: LCD para placar, pino do potenciômetro, pino do botão de ação
+    // --- Constructor ---
     BlockBreaker(LiquidCrystal& lcdRef, int pPin, int bPin);
     
-    void begin(); // NOVO: Inicialização única do Hardware (chamar no setup do Arduino)
-    void start(); // RENOMEADO: Inicia uma sessão de jogo (chamar no menu)
-    void run();   // Loop principal do jogo
-    void stop();  // Método para limpar a matriz ao sair
+    // --- Main Methods ---
+    void begin(); // Hardware init (run once)
+    void start(); // Game session start
+    void run();   // Main loop
+    void stop();  // Cleanup
 
 private:
+    // --- Hardware References ---
     LiquidCrystal& lcd;
-    ArduinoLEDMatrix matrix; // Objeto de controle da matriz do R4
+    ArduinoLEDMatrix matrix; 
     
+    // --- Controls ---
     int potPin;
     int buttonPin;
     
-    // Variáveis de Estado
+    // --- State Variables ---
     BBState state;
     
-    // Buffer da tela (8 linhas x 12 colunas)
-    // 1 = LED ligado, 0 = LED desligado
+    // --- Graphics Buffer ---
     uint8_t frame[8][12]; 
     
-    // Configurações da Raquete
+    // --- Paddle Physics ---
     int paddleX;
     const int paddleWidth = 3; 
     
-    // Configurações da Bola
+    // --- Ball Physics ---
     float ballX, ballY;
     float ballDirX, ballDirY;
     unsigned long lastBallUpdate;
-    const int ballSpeedDelay = 250; // Velocidade (menor = mais rápido)
+    const int ballSpeedDelay = 250; 
     
-    // Tijolos (3 linhas x 12 colunas)
+    // --- Level Data ---
     bool bricks[3][12]; 
     int totalBricks;
     
-    // Métodos Auxiliares
+    // --- Internal Helpers ---
     void resetGame();
     void initBricks();
     void updatePaddle();
     void updateBall();
-    void draw(); // Renderiza o frame na matriz
+    void draw(); 
 };
 
 #endif

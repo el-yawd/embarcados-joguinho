@@ -114,7 +114,7 @@ void ReactionGame::resetGame() {
 
 void ReactionGame::drawInstructions() {
     lcd.setCursor(0, 1);
-    lcd.print("P1:6 vs P2:7");
+    lcd.print("<:P1 vs P2:>");
 }
 
 // --- Game Logic States ---
@@ -248,7 +248,14 @@ void ReactionGame::stateFinished() {
             lcd.print(reactionTime);
             lcd.print("ms");
         } else {
-            lcd.print("FOUL! Opp. Wins");
+            // FIX: Mensagem de falta específica
+            if (winner == 1) {
+                // Vencedor é P1, logo P2 cometeu a falta
+                lcd.print("P2 FOUL! P1 WINS");
+            } else {
+                // Vencedor é P2, logo P1 cometeu a falta
+                lcd.print("P1 FOUL! P2 WINS");
+            }
         }
         
         // Line 1: Instructions

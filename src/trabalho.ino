@@ -8,15 +8,15 @@
 const int rs = 12, en = 11, d4 = 5, d5 = 4, d6 = 3, d7 = 2;
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 
-// Universal Controls
-const int potPin = A5;         // Analog pin for potentiometer (Menu & BlockBreaker)
-const int selectButtonPin = 6; // Digital pin for selection, Dino Jump, and BlockBreaker Start
-const int exitButtonPin = 8;   // Digital pin for universal Exit to Menu
-const int buzzerPin = 9;       // Digital pin for buzzer
+// --- Universal Controls ---
+const int potPin = A5;         
+const int selectButtonPin = 6; 
+const int exitButtonPin = 8;   
+const int buzzerPin = 9;       
 
-// Dedicated Game Controls
-const int player1Pin = 6;      // Reaction Game P1
-const int player2Pin = 7;      // Reaction Game P2
+// --- Dedicated Game Controls ---
+const int player1Pin = 6;      
+const int player2Pin = 7;      
 
 // --- Instantiate Game Objects ---
 
@@ -58,7 +58,24 @@ int lastPotValue = 0;
 unsigned long lastDebounceTime = 0;
 const unsigned long debounceDelay = 50; 
 
+// --- Scrolling Variables ---
+unsigned long lastScrollTime = 0;
+int scrollPosition = 0;
+const int scrollSpeed = 400; 
+const int scrollInitialDelay = 1000; 
+
 // --- Helper Functions ---
+
+void printScrollingText(String text, int limit) {
+    if (text.length() <= limit) {
+        lcd.print(text);
+        for (int i = text.length(); i < limit; i++) lcd.print(" ");
+    } else {
+        String scrollBuffer = text + "   " + text;
+        int offset = scrollPosition % (text.length() + 3);
+        lcd.print(scrollBuffer.substring(offset, offset + limit));
+    }
+}
 
 void drawMenu() {
     int potValue = analogRead(potPin);
@@ -72,29 +89,34 @@ void drawMenu() {
 
         if (newSelection != currentSelection) {
             currentSelection = newSelection;
+            scrollPosition = 0; 
+            lastScrollTime = millis();
             lcd.clear();
         }
         lastPotValue = potValue;
+    }
+    
+    // Update scroll timer
+    int currentDelay = (scrollPosition == 0) ? scrollInitialDelay : scrollSpeed;
+    if (millis() - lastScrollTime > currentDelay) {
+        scrollPosition++;
+        lastScrollTime = millis();
     }
 
     // Draw Menu UI
     lcd.setCursor(0, 0);
     lcd.print(">");
-    for (int i = 0; i < 15 && menuItems[currentSelection][i] != '\0'; ++i) {
-        lcd.write(menuItems[currentSelection][i]);
-    }
-    // Clear rest of line 0
-    for(size_t i = 1 + strlen(menuItems[currentSelection]); i < 16; ++i) {
-        lcd.write(' ');
-    }
+    printScrollingText(menuItems[currentSelection], 15); 
 
-    // Show next item on bottom row
     lcd.setCursor(0, 1);
     if (numMenuItems > 1 && currentSelection < numMenuItems - 1) {
-        lcd.print(" ");
-        int nextItemIndex = currentSelection + 1;
-        for (int i = 0; i < 15 && menuItems[nextItemIndex][i] != '\0'; ++i) {
-            lcd.write(menuItems[nextItemIndex][i]);
+        lcd.print(" "); 
+        String nextItem = menuItems[currentSelection + 1];
+        if (nextItem.length() > 15) {
+            lcd.print(nextItem.substring(0, 15)); 
+        } else {
+            lcd.print(nextItem);
+            for(int i = nextItem.length(); i < 15; i++) lcd.print(" ");
         }
     } else {
         lcd.print("                ");
@@ -104,6 +126,9 @@ void drawMenu() {
 void handleSelection() {
     if (digitalRead(selectButtonPin) == HIGH && (millis() - lastDebounceTime > debounceDelay)) {
         lastDebounceTime = millis();
+        
+        scrollPosition = 0;
+        lastScrollTime = millis();
 
         switch (currentSelection) {
             case 0: // Dinossaur Jumper
@@ -132,16 +157,25 @@ void handleSelection() {
     }
 }
 
-// ABOUT INFO SCREEN
+// --- About Info Screen ---
 void drawAboutScreen() {
+    // Update scroll timer
+    int currentDelay = (scrollPosition == 0) ? scrollInitialDelay : scrollSpeed;
+    if (millis() - lastScrollTime > currentDelay) {
+        scrollPosition++;
+        lastScrollTime = millis();
+    }
+
     lcd.setCursor(0, 0);
-    lcd.print("HOME MADE 'GAMEBOY'"); 
+    printScrollingText("HOME MADE 'GAMEBOY'", 16); 
     lcd.setCursor(0, 1);
-    lcd.print("By Diegos e Kaique");
+    printScrollingText("By Diegos e Kaique ", 16);
 
     if ((digitalRead(exitButtonPin) == HIGH || digitalRead(selectButtonPin) == HIGH) && (millis() - lastDebounceTime > debounceDelay)) {
         lastDebounceTime = millis();
         currentState = MENU;
+        scrollPosition = 0; 
+        lastScrollTime = millis();
         lcd.clear();
     }
 }
@@ -195,6 +229,8 @@ void loop() {
                 }
                 
                 currentState = MENU;
+                scrollPosition = 0; 
+                lastScrollTime = millis();
                 lcd.clear();
                 break; 
             }
