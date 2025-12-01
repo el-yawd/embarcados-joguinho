@@ -3,9 +3,12 @@
 
 #include <Arduino.h>
 #include <LiquidCrystal.h>
+#include "Arduino_LED_Matrix.h" 
 
+// --- Class Definition ---
 class ReactionGame {
 public:
+    // --- Game States ---
     enum GameState {
         WAITING,
         COUNTDOWN,
@@ -14,42 +17,50 @@ public:
     };
 
 private:
+    // --- Hardware References ---
     LiquidCrystal& lcd;
+    ArduinoLEDMatrix matrix;
 
-    // Pins for the two players
+    // --- Pin Definitions ---
     const int player1Pin;
     const int player2Pin;
+    int selectButtonPin; 
 
-    // Game State
+    // --- State Variables ---
     GameState currentState = WAITING;
     unsigned long lastTime = 0;
     unsigned long startTime = 0;
-    long goDelayMs = 0; // Random delay before GO
+    long goDelayMs = 0; 
 
-    // Result tracking
-    int winner = 0; // 1 for P1, 2 for P2, 0 for Tie/Waiting
+    // --- Safety Flags ---
+    bool canRestart;       // Prevent immediate restart if button held
+    bool buttonsReleased;  // Prevent false start on next round
+
+    // --- Scoring & Results ---
+    int winner = 0;        // 1=P1, 2=P2, 0=Tie/None
     unsigned long reactionTime = 0;
 
-
-    // Custom characters (optional: simple indicators)
+    // --- Custom Char Arrays ---
     byte p1Char[8] = { B10000, B11000, B10100, B10000, B10000, B10000, B10000, B10000 };
     byte p2Char[8] = { B00001, B00011, B00101, B00001, B00001, B00001, B00001, B00001 };
 
-    // Private helper methods
+    // --- Internal Helpers ---
     void resetGame();
-    void stateWaiting();
     void stateCountdown();
     void stateGo();
     void stateFinished();
     void drawInstructions();
+    void clearMatrix();
 
 public:
-    // Constructor now takes the two player pins
-    ReactionGame(LiquidCrystal& lcdRef, int p1Pin, int p2Pin);
+    // --- Constructor ---
+    ReactionGame(LiquidCrystal& lcdRef, int p1Pin, int p2Pin, int selPin);
 
-    void setup();
-    void run();
-    bool isGameComplete(); // Check if game is finished and ready to return to menu
+    // --- Main Methods ---
+    void begin();         // Hardware initialization
+    void setup();         // Session setup
+    void run();           // Main game loop
+    void stop();          // Cleanup on exit
 };
 
 #endif // REACTIONGAME_H
