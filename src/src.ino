@@ -228,12 +228,16 @@ void loop() {
                     reactionGame.stop();
                 }
                 
+                gameMusic.stopMusic(); // Stop music when exiting games
                 currentState = MENU;
                 scrollPosition = 0; 
                 lastScrollTime = millis();
                 lcd.clear();
                 break; 
             }
+
+            // Update music playback
+            gameMusic.update();
 
             // Game Logic Dispatch
             if (currentState == RUNNING_DINO) {
